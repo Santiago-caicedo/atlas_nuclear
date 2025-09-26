@@ -1,0 +1,16 @@
+{% extends "reactores/base.html" %}
+
+{% block title %}Reactores en {{ pais }}{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Paso 3: Reactores en <span class="text-primary">{{ pais }}</span> (Modelo: {{ modelo }})</h1>
+    <a href="{% url 'lista_paises' modelo %}" class="btn btn-secondary mb-3">‹ Volver a la lista de países</a>
+
+    <div class="list-group">
+        {% for reactor in reactores %}
+            <a href="{% url 'detalle_reactor' reactor.pk %}" class="list-group-item list-group-item-action">
+                {{ reactor.nombre }}
+            </a>
+        {% endfor %}
+    </div>
+{% endblock %}

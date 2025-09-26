@@ -1,0 +1,16 @@
+{% extends "reactores/base.html" %}
+
+{% block title %}Paso 2: Países con {{ modelo }}{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Paso 2: Países con Reactores modelo: <span class="text-primary">{{ modelo }}</span></h1>
+    <a href="{% url 'lista_tipos' %}" class="btn btn-secondary mb-3">‹ Volver a la lista de modelos</a>
+
+    <div class="list-group">
+        {% for pais in paises %}
+            <a href="{% url 'lista_reactores' modelo pais.pais %}" class="list-group-item list-group-item-action">
+                {{ pais.pais }}
+            </a>
+        {% endfor %}
+    </div>
+{% endblock %}

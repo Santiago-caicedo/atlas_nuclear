@@ -1,0 +1,123 @@
+{% extends "reactores/base.html" %}
+
+{% block title %}Dashboard Principal{% endblock %}
+
+{% block content %}
+    <h2 class="mb-4">Dashboard Principal</h2>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total de Reactores Operativos</h6>
+                    <p class="card-text display-4 fw-bold">{{ total_reactores }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Potencia Total Neta (GW)</h6>
+                    <p class="card-text display-4 fw-bold">{{ potencia_total_gw }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Países con Reactores</h6>
+                    <p class="card-text display-4 fw-bold">{{ paises_con_reactores }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white">Reactores por País (Top 5)</div>
+                <div class="card-body">
+                    <canvas id="topPaisesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white">Mix Energético Mundial</div>
+                <div class="card-body">
+                    <canvas id="energyMixChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white">
+                    Ranking de Países por Número de Reactores
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush">
+                        {% for pais in todos_los_paises %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ forloop.counter }}. {{ pais.pais }}
+                            <span class="badge bg-primary rounded-pill">{{ pais.total }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block javascript %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Datos desde Django ---
+    const energyMixData = JSON.parse('{{ energy_mix_json|escapejs }}');
+    const topPaisesData = JSON.parse('{{ top_paises_chart_json|escapejs }}');
+
+    // --- Gráfica de Donut: Mix Energético ---
+    new Chart(document.getElementById('energyMixChart'), {
+        type: 'doughnut',
+        data: {
+            labels: energyMixData.labels,
+            datasets: [{
+                data: energyMixData.data,
+                backgroundColor: ['#495057', '#0d6efd', '#ffc107', '#198754', '#0dcaf0'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+
+    // --- Gráfica de Barras: Top 5 Países ---
+    new Chart(document.getElementById('topPaisesChart'), {
+        type: 'bar',
+        data: {
+            labels: topPaisesData.labels,
+            datasets: [{
+                label: 'Número de Reactores',
+                data: topPaisesData.data,
+                backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Hace la gráfica horizontal
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
+});
+</script>
+{% endblock %}

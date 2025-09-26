@@ -1,0 +1,15 @@
+{% extends "reactores/base.html" %}
+
+{% block title %}Paso 1: Modelos de Reactor{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Paso 1: Selecciona un Modelo de Reactor</h1>
+
+    <div class="list-group">
+        {% for tipo in tipos %}
+            <a href="{% url 'lista_paises' tipo.modelo|urlencode %}" class="list-group-item list-group-item-action">
+                {{ tipo.modelo }}
+            </a>
+        {% endfor %}
+    </div>
+{% endblock %}

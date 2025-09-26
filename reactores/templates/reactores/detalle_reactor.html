@@ -1,0 +1,50 @@
+{% extends "reactores/base.html" %}
+
+{% block title %}Detalle: {{ reactor.nombre }}{% endblock %}
+
+{% block content %}
+    <h1 class="display-5 mb-4">{{ reactor.nombre }}</h1>
+    <a href="{% url 'lista_reactores' reactor.modelo reactor.pais %}" class="btn btn-secondary mb-4">‹ Volver a la lista de reactores</a>
+    
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Información General</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>País:</strong> {{ reactor.pais }}</li>
+                    <li class="list-group-item"><strong>Status:</strong> {{ reactor.status }}</li>
+                    <li class="list-group-item"><strong>Modelo:</strong> {{ reactor.modelo }}</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Operación</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Dueño:</strong> {{ reactor.dueño|default:"No disponible" }}</li>
+                    <li class="list-group-item"><strong>Operador:</strong> {{ reactor.operador|default:"No disponible" }}</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Capacidad</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Potencia Neta:</strong> {{ reactor.potencia_neta }} MWe</li>
+                    <li class="list-group-item"><strong>Capacidad Térmica:</strong> {{ reactor.capacidad_termica }} MWt</li>
+                    <li class="list-group-item"><strong>Capacidad Bruta:</strong> {{ reactor.capacidad_bruta }} MWe</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header fw-bold">Fechas Clave</div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Inicio de Construcción:</strong> {{ reactor.fecha_inicio_construccion|date:"d M Y"|default:"No disponible" }}</li>
+                    <li class="list-group-item"><strong>Primera Conexión a la Red:</strong> {{ reactor.fecha_primera_conexion|date:"d M Y"|default:"No disponible" }}</li>
+                    <li class="list-group-item"><strong>Cierre Permanente:</strong> {{ reactor.fecha_cierre_permanente|date:"d M Y"|default:"No disponible" }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endblock %}

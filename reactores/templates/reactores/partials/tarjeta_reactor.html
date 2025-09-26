@@ -1,0 +1,13 @@
+<div class="card h-100 shadow-sm text-start">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">{{ reactor.nombre }}</h6>
+        <button class="btn btn-sm btn-outline-danger remove-reactor-btn" title="Eliminar" data-reactor-id="{{ reactor.id }}">&times;</button>
+    </div>
+    <ul class="list-group list-group-flush small">
+        <li class="list-group-item"><strong>País:</strong> {{ reactor.pais }}</li>
+        <li class="list-group-item"><strong>Status:</strong> {{ reactor.status }}</li>
+        <li class="list-group-item"><strong>Modelo:</strong> {{ reactor.modelo }}</li>
+        <li class="list-group-item"><strong>Potencia Neta:</strong> {{ reactor.potencia_neta }} MWe</li>
+        <li class="list-group-item"><strong>Operador:</strong> {{ reactor.operador|default:"N/A" }}</li>
+    </ul>
+</div>

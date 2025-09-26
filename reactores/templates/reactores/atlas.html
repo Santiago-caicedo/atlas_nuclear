@@ -1,0 +1,180 @@
+{% extends "reactores/base.html" %}
+{% load static %}
+
+{% block title %}Atlas Interactivo de Reactores Nucleares{% endblock %}
+
+{% block head_extra %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        #map { height: 75vh; width: 100%; border-radius: 0.5rem; cursor: pointer; }
+        .info-panel {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+        .leaflet-tooltip {
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            box-shadow: none;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="text-center p-5 mb-4 bg-light rounded-3">
+    <h1 class="display-4">Atlas Interactivo de Reactores</h1>
+    <p class="lead">Selecciona un país en el mapa o en el menú para explorar sus reactores nucleares.</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div id="map"></div>
+    </div>
+    <div class="col-md-4">
+        <div class="info-panel">
+            <h5 for="pais-select" class="form-label">Seleccionar País</h5>
+            <select id="pais-select" class="form-select mb-3">
+                <option selected disabled value="">Elige un país...</option>
+                {% for p in paises %}
+                    <option value="{{ p.pais }}">{{ p.pais }}</option>
+                {% endfor %}
+            </select>
+            <hr>
+            <div id="reactor-list-container">
+                <p class="text-muted text-center">Selecciona un país para ver la lista de sus reactores.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="reactorModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reactorModalLabel">Detalles del Reactor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="reactorModalBody">
+        </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- VARIABLES Y CONFIGURACIÓN ---
+    const paisSelect = document.getElementById('pais-select');
+    const reactorListContainer = document.getElementById('reactor-list-container');
+    const reactorModal = new bootstrap.Modal(document.getElementById('reactorModal'));
+    const reactorModalBody = document.getElementById('reactorModalBody');
+    let reactoresPorPais = {};
+    let geoJsonLayer;
+
+    // --- MAPA ---
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map);
+
+    function getColor(d) {
+        return d > 50 ? '#800026' : d > 30 ? '#BD0026' : d > 15 ? '#E31A1C' : d > 5 ? '#FC4E2A' : d > 0 ? '#FD8D3C' : '#cccccc';
+    }
+
+    function style(feature) {
+        // CORREGIDO: Usamos feature.properties.name (minúscula)
+        const data = reactoresPorPais[feature.properties.name];
+        return {
+            fillColor: data ? getColor(data.total_reactores) : '#cccccc',
+            weight: 1, opacity: 1, color: 'white', fillOpacity: 0.7
+        };
+    }
+
+    function onEachFeature(feature, layer) {
+        // CORREGIDO: Usamos feature.properties.name (minúscula)
+        const countryName = feature.properties.name;
+        const data = reactoresPorPais[countryName];
+        
+        if (data) {
+            layer.bindTooltip(`${countryName} (${data.total_reactores})`);
+            layer.on({
+                mouseover: e => e.target.setStyle({ weight: 2, color: '#333' }),
+                mouseout: e => geoJsonLayer.resetStyle(e.target),
+                click: () => {
+                    paisSelect.value = data.db_name;
+                    loadCountryData(data.db_name);
+                    map.fitBounds(layer.getBounds());
+                }
+            });
+        }
+    }
+
+    async function loadCountryData(countryDbName) {
+        reactorListContainer.innerHTML = '<p class="text-center">Cargando reactores...</p>';
+        const response = await fetch(`{% url 'api_reactores_por_pais' %}?pais=${countryDbName}`);
+        const data = await response.json();
+        
+        let listHtml = `<h5 class="mb-3">Reactores en ${countryDbName}</h5><div class="list-group">`;
+        if (data.reactores.length > 0) {
+            data.reactores.forEach(reactor => {
+                listHtml += `<div class="list-group-item d-flex justify-content-between align-items-center"><div>${reactor.nombre}<br><small class="text-muted">Potencia: ${reactor.potencia_neta || 'N/A'} MWe</small></div><button class="btn btn-sm btn-outline-primary view-reactor-btn" data-reactor-id="${reactor.id}">Ver</button></div>`;
+            });
+        } else {
+            listHtml += '<div class="list-group-item">No se encontraron reactores.</div>';
+        }
+        listHtml += '</div>';
+        reactorListContainer.innerHTML = listHtml;
+    }
+
+    async function showReactorDetails(reactorId) {
+        reactorModalBody.innerHTML = '<p class="text-center">Cargando detalles...</p>';
+        reactorModal.show();
+        const response = await fetch(`{% url 'api_reactor_datos' pk=0 %}`.replace('0', reactorId));
+        const data = await response.json();
+        if (data.success) {
+            const r = data.datos;
+            const inicio = r.fecha_inicio_construccion ? new Date(r.fecha_inicio_construccion).toLocaleDateString() : 'N/A';
+            const conexion = r.fecha_primera_conexion ? new Date(r.fecha_primera_conexion).toLocaleDateString() : 'N/A';
+            const cierre = r.fecha_cierre_permanente ? new Date(r.fecha_cierre_permanente).toLocaleDateString() : 'N/A';
+            
+            reactorModalBody.innerHTML = `<div class="row"><div class="col-md-6"><h4>${r.nombre}</h4><ul class="list-group list-group-flush"><li class="list-group-item"><strong>País:</strong> ${r.pais}</li><li class="list-group-item"><strong>Status:</strong> ${r.status}</li><li class="list-group-item"><strong>Modelo:</strong> ${r.modelo}</li><li class="list-group-item"><strong>Operador:</strong> ${r.operador || 'N/A'}</li><li class="list-group-item"><strong>Inicio Construcción:</strong> ${inicio}</li><li class="list-group-item"><strong>Primera Conexión:</strong> ${conexion}</li><li class="list-group-item"><strong>Cierre Permanente:</strong> ${cierre}</li></ul></div><div class="col-md-6"><h5 class="text-center">Rendimiento (MW)</h5><canvas id="detailPowerChart"></canvas></div></div>`;
+            
+            new Chart(document.getElementById('detailPowerChart'), {
+                type: 'bar', data: { labels: ['Potencia Neta (MWe)', 'Capacidad Térmica (MWt)', 'Capacidad Bruta (MWe)'], datasets: [{ data: [r.potencia_neta, r.capacidad_termica, r.capacidad_bruta], backgroundColor: ['#0d6efd', '#198754', '#dc3545'] }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
+    }
+
+    async function initializeMap() {
+        const responseReactores = await fetch(`{% url 'api_datos_mapa' %}`);
+        const dataReactores = await responseReactores.json();
+        dataReactores.forEach(item => { reactoresPorPais[item.pais] = item; });
+        
+        const responseGeoJson = await fetch("{% static 'reactores/data/countries.geo.json' %}");
+        const worldData = await responseGeoJson.json();
+        
+        geoJsonLayer = L.geoJson(worldData, { style: style, onEachFeature: onEachFeature }).addTo(map);
+    }
+
+    // --- EVENT LISTENERS ---
+    paisSelect.addEventListener('change', () => loadCountryData(paisSelect.value));
+    document.addEventListener('click', e => {
+        if (e.target && e.target.classList.contains('view-reactor-btn')) {
+            showReactorDetails(e.target.dataset.reactorId);
+        }
+    });
+
+    // --- INICIALIZACIÓN ---
+    initializeMap();
+});
+</script>
+{% endblock %}
