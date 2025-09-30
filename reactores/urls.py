@@ -29,4 +29,7 @@ urlpatterns = [
     
     # API para obtener los datos JSON completos de un reactor (usada por los modales de detalle)
     path('api/reactor-datos/<int:pk>/', views.api_reactor_datos, name='api_reactor_datos'),
+
+    # En urls.py
+    path('api/reactor-historial/<int:pk>/', views.api_reactor_historial, name='api_reactor_historial'),
 ]

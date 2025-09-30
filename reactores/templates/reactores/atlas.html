@@ -136,23 +136,72 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function showReactorDetails(reactorId) {
-        reactorModalBody.innerHTML = '<p class="text-center">Cargando detalles...</p>';
-        reactorModal.show();
-        const response = await fetch(`{% url 'api_reactor_datos' pk=0 %}`.replace('0', reactorId));
-        const data = await response.json();
-        if (data.success) {
-            const r = data.datos;
-            const inicio = r.fecha_inicio_construccion ? new Date(r.fecha_inicio_construccion).toLocaleDateString() : 'N/A';
-            const conexion = r.fecha_primera_conexion ? new Date(r.fecha_primera_conexion).toLocaleDateString() : 'N/A';
-            const cierre = r.fecha_cierre_permanente ? new Date(r.fecha_cierre_permanente).toLocaleDateString() : 'N/A';
+    reactorModalBody.innerHTML = '<p class.text-center">Cargando detalles...</p>';
+    reactorModal.show();
+    
+    // Petición 1: Obtener los datos generales del reactor
+    const responseDetails = await fetch(`{% url 'api_reactor_datos' pk=0 %}`.replace('0', reactorId));
+    const dataDetails = await responseDetails.json();
+    
+    // Petición 2: Obtener el historial de rendimiento
+    const responseHistory = await fetch(`{% url 'api_reactor_historial' pk=0 %}`.replace('0', reactorId));
+    const dataHistory = await responseHistory.json();
+
+    if (dataDetails.success) {
+        const r = dataDetails.datos;
+        // ... (código para formatear las fechas, igual que antes)
+
+        // Construir la tabla del historial
+        let historyHtml = '<h5 class="mt-3">Historial de Rendimiento Anual</h5>';
+        if (dataHistory.success && dataHistory.historial.length > 0) {
+            historyHtml += `
+                <div class="table-responsive" style="max-height: 200px;">
+                    <table class="table table-sm table-striped">
+                        <thead><tr><th>Año</th><th>Electricidad (GWh)</th><th>Factor de Carga (%)</th></tr></thead>
+                        <tbody>`;
+            dataHistory.historial.forEach(h => {
+                historyHtml += `<tr><td>${h.ano}</td><td>${h.electricidad_suministrada || 'N/A'}</td><td>${h.factor_carga_anual || 'N/A'}</td></tr>`;
+            });
+            historyHtml += `</tbody></table></div>`;
+        } else {
+            historyHtml += '<p class="text-muted small">No hay datos de historial disponibles.</p>';
+        }
+
+        // Unimos todo el HTML para el modal
+        reactorModalBody.innerHTML = `
+            <div class="row">
+                <div class="col-lg-5">
+                    <h4>${r.nombre}</h4>
+                    ${historyHtml}
+                </div>
+                <div class="col-lg-7">
+                    <h5 class="text-center">Electricidad Suministrada (GWh por año)</h5>
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>`;
+        
+        // Crear la nueva gráfica de línea
+        if (dataHistory.success && dataHistory.historial.length > 0) {
+            const historyLabels = dataHistory.historial.map(h => h.ano);
+            const historyValues = dataHistory.historial.map(h => h.electricidad_suministrada);
             
-            reactorModalBody.innerHTML = `<div class="row"><div class="col-md-6"><h4>${r.nombre}</h4><ul class="list-group list-group-flush"><li class="list-group-item"><strong>País:</strong> ${r.pais}</li><li class="list-group-item"><strong>Status:</strong> ${r.status}</li><li class="list-group-item"><strong>Modelo:</strong> ${r.modelo}</li><li class="list-group-item"><strong>Operador:</strong> ${r.operador || 'N/A'}</li><li class="list-group-item"><strong>Inicio Construcción:</strong> ${inicio}</li><li class="list-group-item"><strong>Primera Conexión:</strong> ${conexion}</li><li class="list-group-item"><strong>Cierre Permanente:</strong> ${cierre}</li></ul></div><div class="col-md-6"><h5 class="text-center">Rendimiento (MW)</h5><canvas id="detailPowerChart"></canvas></div></div>`;
-            
-            new Chart(document.getElementById('detailPowerChart'), {
-                type: 'bar', data: { labels: ['Potencia Neta (MWe)', 'Capacidad Térmica (MWt)', 'Capacidad Bruta (MWe)'], datasets: [{ data: [r.potencia_neta, r.capacidad_termica, r.capacidad_bruta], backgroundColor: ['#0d6efd', '#198754', '#dc3545'] }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
+            new Chart(document.getElementById('historyChart'), {
+                type: 'line',
+                data: {
+                    labels: historyLabels,
+                    datasets: [{
+                        label: 'GWh Suministrados',
+                        data: historyValues,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                }
             });
         }
     }
+}
 
     async function initializeMap() {
         const responseReactores = await fetch(`{% url 'api_datos_mapa' %}`);

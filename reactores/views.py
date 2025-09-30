@@ -145,3 +145,13 @@ def api_reactor_datos(request, pk):
         return JsonResponse({'success': True, 'datos': datos})
     except Reactor.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Reactor no encontrado'}, status=404)
+
+
+def api_reactor_historial(request, pk):
+    try:
+        reactor = Reactor.objects.get(pk=pk)
+        # Obtenemos todo el historial relacionado y lo convertimos a una lista de diccionarios
+        historial = list(reactor.historial.all().values())
+        return JsonResponse({'success': True, 'historial': historial})
+    except Reactor.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Reactor no encontrado'}, status=404)

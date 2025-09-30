@@ -1,6 +1,7 @@
 {% extends "reactores/base.html" %}
+{% load static %}
 
-{% block title %}Comparador de Reactores{% endblock %}
+{% block title %}Comparador Interactivo de Reactores{% endblock %}
 
 {% block content %}
 <div class="text-center p-5 mb-4 bg-light rounded-3">
@@ -47,18 +48,28 @@
         <hr class="my-4">
         <div class="row">
             <div class="col-lg-6 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-header">Comparativa de Potencia (MWe)</div>
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white">Comparativa de Potencia (MWe)</div>
                     <div class="card-body">
                         <canvas id="potenciaChart"></canvas>
                     </div>
                 </div>
             </div>
             <div class="col-lg-6 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-header">Años de Construcción (Inicio a Conexión)</div>
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white">Años de Construcción (Inicio a Conexión)</div>
                     <div class="card-body">
                         <canvas id="construccionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">Historial de Electricidad Suministrada (GWh por Año)</div>
+                    <div class="card-body">
+                        <canvas id="historyChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -82,8 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const graficasContainer = document.getElementById('graficas-container');
 
     let comparisonData = []; // Almacenará los datos completos de los reactores en comparación
-    let potenciaChart = null;
-    let construccionChart = null;
+    let potenciaChart = null, construccionChart = null, historyChart = null;
 
     // --- LÓGICA DE GRÁFICAS ---
     function updateCharts() {
@@ -96,31 +106,36 @@ document.addEventListener('DOMContentLoaded', function() {
         const labels = comparisonData.map(r => r.nombre);
 
         // Gráfica de Potencia
-        const potenciaNetaData = comparisonData.map(r => r.potencia_neta);
-        const capacidadBrutaData = comparisonData.map(r => r.capacidad_bruta);
-        
         if (potenciaChart) potenciaChart.destroy();
         potenciaChart = new Chart(document.getElementById('potenciaChart'), {
-            type: 'bar', data: { labels: labels, datasets: [ { label: 'Potencia Neta (MWe)', data: potenciaNetaData, backgroundColor: 'rgba(54, 162, 235, 0.7)' }, { label: 'Capacidad Bruta (MWe)', data: capacidadBrutaData, backgroundColor: 'rgba(255, 99, 132, 0.7)' } ] }, options: { scales: { y: { beginAtZero: true } } }
+            type: 'bar', data: { labels: labels, datasets: [ { label: 'Potencia Neta (MWe)', data: comparisonData.map(r => r.potencia_neta), backgroundColor: 'rgba(54, 162, 235, 0.7)' }, { label: 'Capacidad Bruta (MWe)', data: comparisonData.map(r => r.capacidad_bruta), backgroundColor: 'rgba(255, 99, 132, 0.7)' } ] }, options: { scales: { y: { beginAtZero: true } } }
         });
 
         // Gráfica de Años de Construcción
-        const aniosConstruccionData = comparisonData.map(r => {
-            if (r.fecha_inicio_construccion && r.fecha_primera_conexion) {
-                return (new Date(r.fecha_primera_conexion) - new Date(r.fecha_inicio_construccion)) / (1000 * 60 * 60 * 24 * 365.25);
-            }
-            return 0;
-        });
-
         if (construccionChart) construccionChart.destroy();
         construccionChart = new Chart(document.getElementById('construccionChart'), {
-            type: 'bar', data: { labels: labels, datasets: [{ label: 'Años de Construcción (aprox.)', data: aniosConstruccionData, backgroundColor: 'rgba(75, 192, 192, 0.7)' }] }, options: { scales: { y: { beginAtZero: true } } }
+            type: 'bar', data: { labels: labels, datasets: [{ label: 'Años de Construcción (aprox.)', data: comparisonData.map(r => { if (r.fecha_inicio_construccion && r.fecha_primera_conexion) { return (new Date(r.fecha_primera_conexion) - new Date(r.fecha_inicio_construccion)) / (1000 * 60 * 60 * 24 * 365.25); } return 0; }), backgroundColor: 'rgba(75, 192, 192, 0.7)' }] }, options: { scales: { y: { beginAtZero: true } } }
+        });
+        
+        // Gráfica de Historial de Rendimiento
+        const allYears = [...new Set(comparisonData.flatMap(r => r.historial.map(h => h.ano)))].sort();
+        const datasets = comparisonData.map((reactor, index) => {
+            const colorPalette = ['#0d6efd', '#dc3545', '#198754', '#ffc107'];
+            const color = colorPalette[index % colorPalette.length];
+            const data = allYears.map(year => {
+                const yearData = reactor.historial.find(h => h.ano === year);
+                return yearData ? yearData.electricidad_suministrada : null;
+            });
+            return { label: reactor.nombre, data: data, borderColor: color, backgroundColor: color.replace(')', ', 0.1)'), fill: true, tension: 0.1 };
+        });
+
+        if (historyChart) historyChart.destroy();
+        historyChart = new Chart(document.getElementById('historyChart'), {
+            type: 'line', data: { labels: allYears, datasets: datasets }, options: { responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'GWh Suministrados' } }, x: { title: { display: true, text: 'Año' } } } }
         });
     }
 
     // --- LÓGICA DE AÑADIR/ELIMINAR/CARGAR ---
-
-    // Dibuja las tarjetas de comparación
     function renderComparisonSlots() {
         comparisonSlots.innerHTML = '';
         if (comparisonData.length === 0) {
@@ -128,69 +143,83 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         comparisonData.forEach(reactor => {
-            fetch(`/comparador/api/reactor-detalle/${reactor.id}/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const slotWrapper = document.createElement('div');
-                        slotWrapper.className = 'col-lg-3 col-md-6 mb-4';
-                        slotWrapper.innerHTML = data.html;
-                        comparisonSlots.appendChild(slotWrapper);
-                    }
-                });
+            const slotWrapper = document.createElement('div');
+            slotWrapper.className = 'col-lg-3 col-md-6 mb-4';
+            slotWrapper.innerHTML = `
+                <div class="card h-100 shadow-sm text-start">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 small">${reactor.nombre}</h6>
+                        <button class="btn btn-sm btn-outline-danger remove-reactor-btn" title="Eliminar" data-reactor-id="${reactor.id}">&times;</button>
+                    </div>
+                    <ul class="list-group list-group-flush small">
+                        <li class="list-group-item"><strong>País:</strong> ${reactor.pais}</li>
+                        <li class="list-group-item"><strong>Modelo:</strong> ${reactor.modelo}</li>
+                        <li class="list-group-item"><strong>Potencia Neta:</strong> ${reactor.potencia_neta} MWe</li>
+                    </ul>
+                </div>`;
+            comparisonSlots.appendChild(slotWrapper);
         });
     }
 
-    // Añade un reactor a la comparación
     async function addReactorToComparison(reactorId) {
+        if (!reactorId) return;
         if (comparisonData.find(r => r.id == reactorId)) { alert('Este reactor ya está en la lista.'); return; }
         if (comparisonData.length >= 4) { alert('Máximo 4 reactores.'); return; }
         
-        const response = await fetch(`/comparador/api/reactor-datos/${reactorId}/`);
-        const data = await response.json();
+        const responseDetails = await fetch(`/comparador/api/reactor-datos/${reactorId}/`);
+        const dataDetails = await responseDetails.json();
+        const responseHistory = await fetch(`/comparador/api/reactor-historial/${reactorId}/`);
+        const dataHistory = await responseHistory.json();
 
-        if (data.success) {
-            comparisonData.push(data.datos);
+        if (dataDetails.success) {
+            const reactorData = dataDetails.datos;
+            reactorData.historial = dataHistory.success ? dataHistory.historial : [];
+            comparisonData.push(reactorData);
             renderComparisonSlots();
             updateCharts();
         }
     }
 
-    // Elimina un reactor de la comparación
     function removeReactorFromComparison(reactorId) {
         comparisonData = comparisonData.filter(reactor => reactor.id !== parseInt(reactorId));
         renderComparisonSlots();
         updateCharts();
     }
     
-    // --- LÓGICA DE FILTROS EN CASCADA (sin cambios) ---
+    // --- LÓGICA DE FILTROS EN CASCADA ---
     modeloSelect.addEventListener('change', function() {
         const selectedModelo = this.value;
         paisSelect.innerHTML = '<option selected disabled value="">Cargando...</option>'; paisSelect.disabled = true;
         reactorSelect.innerHTML = '<option selected disabled value="">Seleccione un país...</option>'; reactorSelect.disabled = true;
         addButton.disabled = true;
-        if (!selectedModelo) return;
-        fetch(`{% url 'api_paises_por_modelo' %}?modelo=${encodeURIComponent(selectedModelo)}`).then(res => res.json()).then(data => {
+        
+        // CORREGIDO: Usando comillas invertidas (backticks)
+        fetch(`/comparador/api/paises-por-modelo/?modelo=${encodeURIComponent(selectedModelo)}`).then(res => res.json()).then(data => {
             paisSelect.innerHTML = '<option selected disabled value="">Seleccione un país...</option>';
             data.paises.forEach(p => paisSelect.innerHTML += `<option value="${p.pais}">${p.pais}</option>`);
             paisSelect.disabled = false;
         });
     });
+
     paisSelect.addEventListener('change', function() {
-        const selectedModelo = modeloSelect.value; const selectedPais = this.value;
+        const selectedModelo = modeloSelect.value; 
+        const selectedPais = this.value;
         reactorSelect.innerHTML = '<option selected disabled value="">Cargando...</option>'; reactorSelect.disabled = true;
         addButton.disabled = true;
-        if (!selectedPais) return;
-        fetch(`{% url 'api_reactores_por_modelo_y_pais' %}?modelo=${encodeURIComponent(selectedModelo)}&pais=${selectedPais}`).then(res => res.json()).then(data => {
+
+        // CORREGIDO: Usando comillas invertidas (backticks)
+        fetch(`/comparador/api/reactores-por-modelo-y-pais/?modelo=${encodeURIComponent(selectedModelo)}&pais=${selectedPais}`).then(res => res.json()).then(data => {
             reactorSelect.innerHTML = '<option selected disabled value="">Seleccione un reactor...</option>';
             data.reactores.forEach(r => reactorSelect.innerHTML += `<option value="${r.id}">${r.nombre}</option>`);
             reactorSelect.disabled = false;
         });
     });
+
     reactorSelect.addEventListener('change', () => addButton.disabled = !reactorSelect.value);
 
     // --- EVENT LISTENERS ---
     addButton.addEventListener('click', () => addReactorToComparison(reactorSelect.value));
+    
     comparisonSlots.addEventListener('click', e => {
         if (e.target && e.target.classList.contains('remove-reactor-btn')) {
             removeReactorFromComparison(e.target.dataset.reactorId);
@@ -198,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- INICIALIZACIÓN ---
-    renderComparisonSlots(); // Dibuja el estado inicial (vacío)
+    renderComparisonSlots();
 });
 </script>
 {% endblock %}
