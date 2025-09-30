@@ -10,6 +10,7 @@ class Reactor(models.Model):
     operador = models.CharField(max_length=255, null=True, blank=True, verbose_name="Operador")
     modelo = models.CharField(max_length=100, null=True, blank=True, verbose_name="Modelo")
     potencia_neta = models.IntegerField(null=True, blank=True, verbose_name="Potencia Neta (MWe)")
+    tipo_reactor_categoria = models.CharField(max_length=20, null=True, blank=True, db_index=True, verbose_name="Categoría de Tipo")
     capacidad_termica = models.IntegerField(null=True, blank=True, verbose_name="Capacidad Térmica (MWt)")
     capacidad_bruta = models.IntegerField(null=True, blank=True, verbose_name="Capacidad Bruta (MWe)")
     fecha_inicio_construccion = models.DateField(null=True, blank=True)

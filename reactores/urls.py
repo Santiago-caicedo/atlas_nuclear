@@ -32,4 +32,14 @@ urlpatterns = [
 
     # En urls.py
     path('api/reactor-historial/<int:pk>/', views.api_reactor_historial, name='api_reactor_historial'),
+
+    path('ciclo-de-vida/', views.vista_ciclo_vida, name='ciclo_vida'),
+    
+    # --- AÑADE ESTA NUEVA RUTA DE API ---
+    path('api/datos-ciclo-vida/', views.api_datos_ciclo_vida, name='api_datos_ciclo_vida'),
+
+
+     # --- NUEVAS RUTAS PARA LA ENCICLOPEDIA DE MODELOS ---
+    path('enciclopedia-tipos/', views.vista_enciclopedia_tipos, name='enciclopedia_tipos'),
+    path('api/datos-tipo/<str:tipo>/', views.api_datos_tipo, name='api_datos_tipo'),
 ]

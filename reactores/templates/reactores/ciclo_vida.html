@@ -1,0 +1,118 @@
+{% extends "reactores/base.html" %}
+
+{% block title %}Ciclo de Vida del Parque Nuclear{% endblock %}
+
+{% block content %}
+<div class="text-center p-5 mb-4 bg-light rounded-3">
+    <h1 class="display-4">Ciclo de Vida y Desmantelamiento</h1>
+    <p class="lead">Visualiza la vida útil operativa de los reactores nucleares del mundo, desde su inicio hasta su cierre real o proyectado.</p>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <label for="country-filter" class="form-label">Filtrar por País:</label>
+                <select class="form-select" id="country-filter">
+                    <option value="Todos">Todos los Países</option>
+                    {% for pais in paises %}
+                        <option value="{{ pais }}">{{ pais }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="timeline-chart"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chartElement = document.getElementById('timeline-chart');
+    const countryFilter = document.getElementById('country-filter');
+    let chart;
+    let allData = []; // Almacenaremos todos los datos aquí
+
+    // Opciones de la gráfica, ahora con un mensaje para cuando no hay datos
+    const options = {
+        series: [],
+        chart: { type: 'rangeBar', height: 800, animations: { enabled: true, speed: 500 } },
+        plotOptions: { bar: { horizontal: true, barHeight: '80%' } },
+        xaxis: { type: 'datetime', min: new Date('1950-01-01').getTime(), max: new Date('2080-01-01').getTime() },
+        stroke: { width: 1 },
+        fill: { type: 'solid', opacity: 0.7 },
+        legend: { position: 'top' },
+        tooltip: {
+            custom: function(opts) {
+                const from = new Date(opts.y1).getFullYear();
+                const to = new Date(opts.y2).getFullYear();
+                return `<div class="p-2"><strong>${opts.series[opts.seriesIndex].data[opts.dataPointIndex].x}</strong><br>Vida útil: ${from} - ${to}</div>`;
+            }
+        },
+        // --- NUEVO: Mensaje para cuando la gráfica está vacía ---
+        noData: {
+            text: 'Selecciona un país en el menú para ver su línea de tiempo.',
+            align: 'center',
+            verticalAlign: 'middle',
+            style: {
+                fontSize: '18px',
+                color: '#6c757d'
+            }
+        }
+    };
+
+    // Función que actualiza la gráfica con los datos filtrados
+    function updateChart(data) {
+        // Agrupar datos por estado ('Desmantelado', 'Operativo')
+        const seriesData = data.reduce((acc, reactor) => {
+            const group = reactor.estado;
+            if (!acc[group]) {
+                acc[group] = [];
+            }
+            acc[group].push({
+                x: reactor.nombre,
+                y: [new Date(reactor.inicio).getTime(), new Date(reactor.fin).getTime()]
+            });
+            return acc;
+        }, {});
+
+        const series = Object.keys(seriesData).map(key => ({
+            name: key,
+            data: seriesData[key]
+        }));
+        
+        // Usamos updateSeries para una transición suave en lugar de re-renderizar todo
+        chart.updateSeries(series);
+    }
+    
+    // --- LÓGICA DE INICIALIZACIÓN MODIFICADA ---
+    // 1. Renderizamos la gráfica vacía primero
+    chart = new ApexCharts(chartElement, options);
+    chart.render();
+
+    // 2. Cargamos todos los datos en segundo plano
+    fetch(`{% url 'api_datos_ciclo_vida' %}`)
+        .then(response => response.json())
+        .then(data => {
+            allData = data;
+        });
+
+    // --- EVENT LISTENER DEL FILTRO (ahora es el protagonista) ---
+    countryFilter.addEventListener('change', function() {
+        const selectedCountry = this.value;
+        if (selectedCountry === 'Todos') {
+            // Si eligen "Todos", limpiamos la gráfica para evitar el desorden
+            chart.updateSeries([]); 
+        } else {
+            const filteredData = allData.filter(reactor => reactor.pais === selectedCountry);
+            updateChart(filteredData);
+        }
+    });
+});
+</script>
+{% endblock %}
