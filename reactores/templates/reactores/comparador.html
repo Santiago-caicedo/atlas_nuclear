@@ -13,11 +13,11 @@
     <div class="card-body">
         <div class="row g-3 align-items-end">
             <div class="col-md-4">
-                <label for="modelo-select" class="form-label">1. Tipo de Reactor (Modelo)</label>
-                <select id="modelo-select" class="form-select">
+                <label for="tipo-select" class="form-label">1. Tipo de Reactor</label>
+                <select id="tipo-select" class="form-select">
                     <option selected disabled value="">Seleccionar un tipo...</option>
-                    {% for m in modelos %}
-                        <option value="{{ m.modelo }}">{{ m.modelo }}</option>
+                    {% for tipo in tipos %}
+                        <option value="{{ tipo }}">{{ tipo }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -41,7 +41,7 @@
 </div>
 
 <div id="results-container">
-    <div class="row text-center" id="comparison-slots">
+    <div class="row" id="comparison-slots">
         </div>
 
     <div id="graficas-container" class="mt-4" style="display: none;">
@@ -81,18 +81,17 @@
 
 {% block javascript %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // --- VARIABLES Y SELECTORES DEL DOM ---
-    const modeloSelect = document.getElementById('modelo-select');
+    const tipoSelect = document.getElementById('tipo-select');
     const paisSelect = document.getElementById('pais-select');
     const reactorSelect = document.getElementById('reactor-select');
     const addButton = document.getElementById('add-button');
     const comparisonSlots = document.getElementById('comparison-slots');
     const graficasContainer = document.getElementById('graficas-container');
 
-    let comparisonData = []; // Almacenará los datos completos de los reactores en comparación
+    let comparisonData = [];
     let potenciaChart = null, construccionChart = null, historyChart = null;
 
     // --- LÓGICA DE GRÁFICAS ---
@@ -126,7 +125,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const yearData = reactor.historial.find(h => h.ano === year);
                 return yearData ? yearData.electricidad_suministrada : null;
             });
-            return { label: reactor.nombre, data: data, borderColor: color, backgroundColor: color.replace(')', ', 0.1)'), fill: true, tension: 0.1 };
+
+            return { 
+                label: reactor.nombre, 
+                data: data, 
+                borderColor: color, 
+                // --- CAMBIO CLAVE: quitamos el color de fondo y ponemos fill: false ---
+                fill: false, 
+                tension: 0.1 
+            };
         });
 
         if (historyChart) historyChart.destroy();
@@ -139,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderComparisonSlots() {
         comparisonSlots.innerHTML = '';
         if (comparisonData.length === 0) {
-            comparisonSlots.innerHTML = '<div class="col-12 text-center text-muted p-5"><p>Usa los filtros de arriba para añadir reactores a la comparación.</p></div>';
+            comparisonSlots.innerHTML = '<div class="col-12 text-center text-muted p-5"><h4>Usa los filtros de arriba para añadir reactores a la comparación.</h4></div>';
             return;
         }
         comparisonData.forEach(reactor => {
@@ -153,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <ul class="list-group list-group-flush small">
                         <li class="list-group-item"><strong>País:</strong> ${reactor.pais}</li>
-                        <li class="list-group-item"><strong>Modelo:</strong> ${reactor.modelo}</li>
+                        <li class="list-group-item"><strong>Tipo:</strong> ${reactor.tipo_reactor_categoria}</li>
                         <li class="list-group-item"><strong>Potencia Neta:</strong> ${reactor.potencia_neta} MWe</li>
                     </ul>
                 </div>`;
@@ -187,14 +194,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // --- LÓGICA DE FILTROS EN CASCADA ---
-    modeloSelect.addEventListener('change', function() {
-        const selectedModelo = this.value;
+    tipoSelect.addEventListener('change', function() {
+        const selectedTipo = this.value;
         paisSelect.innerHTML = '<option selected disabled value="">Cargando...</option>'; paisSelect.disabled = true;
         reactorSelect.innerHTML = '<option selected disabled value="">Seleccione un país...</option>'; reactorSelect.disabled = true;
         addButton.disabled = true;
-        
-        // CORREGIDO: Usando comillas invertidas (backticks)
-        fetch(`/comparador/api/paises-por-modelo/?modelo=${encodeURIComponent(selectedModelo)}`).then(res => res.json()).then(data => {
+        fetch(`/comparador/api/paises-por-tipo/?tipo=${encodeURIComponent(selectedTipo)}`).then(res => res.json()).then(data => {
             paisSelect.innerHTML = '<option selected disabled value="">Seleccione un país...</option>';
             data.paises.forEach(p => paisSelect.innerHTML += `<option value="${p.pais}">${p.pais}</option>`);
             paisSelect.disabled = false;
@@ -202,13 +207,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     paisSelect.addEventListener('change', function() {
-        const selectedModelo = modeloSelect.value; 
+        const selectedTipo = tipoSelect.value; 
         const selectedPais = this.value;
         reactorSelect.innerHTML = '<option selected disabled value="">Cargando...</option>'; reactorSelect.disabled = true;
         addButton.disabled = true;
-
-        // CORREGIDO: Usando comillas invertidas (backticks)
-        fetch(`/comparador/api/reactores-por-modelo-y-pais/?modelo=${encodeURIComponent(selectedModelo)}&pais=${selectedPais}`).then(res => res.json()).then(data => {
+        fetch(`/comparador/api/reactores-por-tipo-y-pais/?tipo=${encodeURIComponent(selectedTipo)}&pais=${selectedPais}`).then(res => res.json()).then(data => {
             reactorSelect.innerHTML = '<option selected disabled value="">Seleccione un reactor...</option>';
             data.reactores.forEach(r => reactorSelect.innerHTML += `<option value="${r.id}">${r.nombre}</option>`);
             reactorSelect.disabled = false;

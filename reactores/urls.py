@@ -21,11 +21,8 @@ urlpatterns = [
     # API para obtener reactores de un país (usada por el atlas)
     path('api/reactores-por-pais/', views.api_reactores_por_pais, name='api_reactores_por_pais'),
     
-    # API para obtener países según un modelo (usada por el comparador)
-    path('api/paises-por-modelo/', views.api_paises_por_modelo, name='api_paises_por_modelo'),
-    
-    # API para obtener reactores según modelo y país (usada por el comparador)
-    path('api/reactores-por-modelo-y-pais/', views.api_reactores_por_modelo_y_pais, name='api_reactores_por_modelo_y_pais'),
+    path('api/paises-por-tipo/', views.api_paises_por_tipo, name='api_paises_por_tipo'),
+    path('api/reactores-por-tipo-y-pais/', views.api_reactores_por_tipo_y_pais, name='api_reactores_por_tipo_y_pais'),
     
     # API para obtener los datos JSON completos de un reactor (usada por los modales de detalle)
     path('api/reactor-datos/<int:pk>/', views.api_reactor_datos, name='api_reactor_datos'),

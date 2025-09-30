@@ -58,11 +58,11 @@ def vista_atlas(request):
 def vista_comparador(request):
     """
     Renderiza la página del comparador interactivo.
-    Pasa la lista de modelos de reactores para el primer filtro.
+    Pasa la lista de tipos de reactores para el primer filtro.
     """
-    modelos = Reactor.objects.exclude(modelo__isnull=True).exclude(modelo__exact='').values('modelo').distinct().order_by('modelo')
+    tipos = Reactor.objects.exclude(tipo_reactor_categoria__isnull=True).values_list('tipo_reactor_categoria', flat=True).distinct().order_by('tipo_reactor_categoria')
     context = {
-        'modelos': modelos
+        'tipos': tipos
     }
     return render(request, 'reactores/comparador.html', context)
 
@@ -107,30 +107,28 @@ def api_reactores_por_pais(request):
     return JsonResponse({'reactores': lista_reactores})
 
 
-def api_paises_por_modelo(request):
+def api_paises_por_tipo(request):
     """
-    API: Devuelve la lista de países que tienen un modelo de reactor específico.
-    Usado por el filtro del comparador.
+    API: Devuelve los países que tienen un TIPO de reactor específico.
     """
-    modelo = request.GET.get('modelo')
-    if not modelo:
+    tipo = request.GET.get('tipo')
+    if not tipo:
         return JsonResponse({'paises': []})
     
-    paises = Reactor.objects.filter(modelo=modelo).values('pais').distinct().order_by('pais')
+    paises = Reactor.objects.filter(tipo_reactor_categoria=tipo).values('pais').distinct().order_by('pais')
     return JsonResponse({'paises': list(paises)})
 
 
-def api_reactores_por_modelo_y_pais(request):
+def api_reactores_por_tipo_y_pais(request):
     """
-    API: Devuelve la lista de reactores para un modelo y país específicos.
-    Usado por el filtro del comparador.
+    API: Devuelve los reactores para un TIPO y país específicos.
     """
-    modelo = request.GET.get('modelo')
+    tipo = request.GET.get('tipo')
     pais = request.GET.get('pais')
-    if not modelo or not pais:
+    if not tipo or not pais:
         return JsonResponse({'reactores': []})
     
-    reactores = Reactor.objects.filter(modelo=modelo, pais=pais).order_by('nombre')
+    reactores = Reactor.objects.filter(tipo_reactor_categoria=tipo, pais=pais).order_by('nombre')
     lista_reactores = list(reactores.values('id', 'nombre'))
     return JsonResponse({'reactores': lista_reactores})
 
