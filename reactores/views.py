@@ -77,23 +77,29 @@ def vista_comparador(request):
 
 def api_datos_mapa(request):
     """
-    API: Devuelve datos agregados por país para colorear el mapa del atlas.
-    Incluye alias para que los nombres coincidan con el archivo GeoJSON.
+    API que devuelve datos agregados por país para colorear el mapa del atlas.
+    Incluye el diccionario de alias definitivo y verificado.
     """
+    # --- DICCIONARIO DE ALIAS DEFINITIVO ---
     alias_paises = {
-        "USA": "United States of America",
-        "Russia": "Russian Federation",
-        "South Korea": "Republic of Korea",
+        # El nombre en la BD es 'United States Of America', el del mapa es 'United States of America'
+        "United States Of America": "United States of America",
+        
+        # 'South Korea' y 'Russia' ya coinciden en la BD y en el mapa, por lo que no necesitan alias.
     }
+
     datos_paises = Reactor.objects.values('pais').annotate(total_reactores=Count('id')).order_by('pais')
+    
     resultado = []
     for item in datos_paises:
+        # Usamos el alias si existe; si no, usamos el nombre original de la base de datos
         nombre_pais_mapa = alias_paises.get(item['pais'], item['pais'])
         resultado.append({
             'pais': nombre_pais_mapa,
-            'db_name': item['pais'],
+            'db_name': item['pais'], # El nombre original para hacer búsquedas
             'total_reactores': item['total_reactores']
         })
+        
     return JsonResponse(resultado, safe=False)
 
 

@@ -208,8 +208,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('reactorModal').addEventListener('shown.bs.modal', function () {
                 const detailMap = L.map('reactor-detail-map').setView([r.latitud, r.longitud], 13);
                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri'
-}).addTo(detailMap);
+                    attribution: 'Tiles &copy; Esri'
+                }).addTo(detailMap);
                 L.marker([r.latitud, r.longitud]).addTo(detailMap);
             }, { once: true }); // 'once: true' evita que el evento se dispare múltiples veces
         }
