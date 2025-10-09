@@ -12,35 +12,39 @@ from datetime import timedelta
 # ==============================================================================
 
 def vista_dashboard(request):
-    # --- Cálculos desde la base de datos ---
+    """
+    Renderiza la página principal del dashboard con estadísticas, gráficas y guías.
+    """
+    # --- Cálculos para las tarjetas de métricas (KPIs) ---
     total_reactores = Reactor.objects.count()
     paises_con_reactores = Reactor.objects.values('pais').distinct().count()
     potencia_total = Reactor.objects.aggregate(total_power=Sum('potencia_neta'))['total_power']
-    top_paises = Reactor.objects.values('pais').annotate(total=Count('id')).order_by('-total')[:5]
-    
-    # --- NUEVA LÍNEA: Obtenemos la lista completa de países ---
-    todos_los_paises = Reactor.objects.values('pais').annotate(total=Count('id')).order_by('-total')
 
-    # --- Datos para las gráficas ---
-    energy_mix_data = {
-        'labels': ['Combustibles Fósiles', 'Hidroeléctrica', 'Nuclear', 'Eólica y Solar', 'Otras Renovables'],
-        'data': [59, 15, 9, 13, 4],
-    }
+    # --- Datos para la lista completa y la gráfica de barras ---
+    top_paises = Reactor.objects.values('pais').annotate(total=Count('id')).order_by('-total')[:5]
+    todos_los_paises = Reactor.objects.values('pais').annotate(total=Count('id')).order_by('-total')
+    
     top_paises_chart_data = {
         'labels': [p['pais'] for p in top_paises],
         'data': [p['total'] for p in top_paises],
+    }
+    
+    # --- Datos estáticos para la gráfica de donut ---
+    energy_mix_data = {
+        'labels': ['Combustibles Fósiles', 'Hidroeléctrica', 'Nuclear', 'Eólica y Solar', 'Otras Renovables'],
+        'data': [59, 15, 9, 13, 4],
     }
 
     context = {
         'total_reactores': total_reactores,
         'paises_con_reactores': paises_con_reactores,
         'potencia_total_gw': round(potencia_total / 1000) if potencia_total else 0,
-        'top_paises': top_paises,
-        'todos_los_paises': todos_los_paises, # <-- Añadimos la nueva lista al contexto
+        'todos_los_paises': todos_los_paises,
         'energy_mix_json': json.dumps(energy_mix_data),
         'top_paises_chart_json': json.dumps(top_paises_chart_data)
     }
     return render(request, 'reactores/dashboard.html', context)
+
 
 
 def vista_atlas(request):

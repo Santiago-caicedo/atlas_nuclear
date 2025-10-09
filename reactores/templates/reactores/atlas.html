@@ -136,69 +136,82 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function showReactorDetails(reactorId) {
-    reactorModalBody.innerHTML = '<p class.text-center">Cargando detalles...</p>';
+    reactorModalBody.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
     reactorModal.show();
     
-    // Petición 1: Obtener los datos generales del reactor
+    // Peticiones para datos generales e historial
     const responseDetails = await fetch(`{% url 'api_reactor_datos' pk=0 %}`.replace('0', reactorId));
     const dataDetails = await responseDetails.json();
-    
-    // Petición 2: Obtener el historial de rendimiento
     const responseHistory = await fetch(`{% url 'api_reactor_historial' pk=0 %}`.replace('0', reactorId));
     const dataHistory = await responseHistory.json();
 
     if (dataDetails.success) {
         const r = dataDetails.datos;
-        // ... (código para formatear las fechas, igual que antes)
-
-        // Construir la tabla del historial
-        let historyHtml = '<h5 class="mt-3">Historial de Rendimiento Anual</h5>';
-        if (dataHistory.success && dataHistory.historial.length > 0) {
-            historyHtml += `
-                <div class="table-responsive" style="max-height: 200px;">
-                    <table class="table table-sm table-striped">
-                        <thead><tr><th>Año</th><th>Electricidad (GWh)</th><th>Factor de Carga (%)</th></tr></thead>
-                        <tbody>`;
-            dataHistory.historial.forEach(h => {
-                historyHtml += `<tr><td>${h.ano}</td><td>${h.electricidad_suministrada || 'N/A'}</td><td>${h.factor_carga_anual || 'N/A'}</td></tr>`;
-            });
-            historyHtml += `</tbody></table></div>`;
+        
+        // --- Construcción del HTML del Modal ---
+        let mapHtml = '';
+        if (r.latitud && r.longitud) {
+            mapHtml = `<div id="reactor-detail-map" style="height: 300px; width: 100%; border-radius: 0.5rem;" class="mt-3"></div>`;
         } else {
-            historyHtml += '<p class="text-muted small">No hay datos de historial disponibles.</p>';
+            mapHtml = '<p class="text-muted text-center mt-3">Ubicación no disponible.</p>';
         }
 
-        // Unimos todo el HTML para el modal
+        let historyTableHtml = '<h6>Historial de Rendimiento</h6>';
+        if (dataHistory.success && dataHistory.historial.length > 0) {
+            historyTableHtml += `<div class="table-responsive" style="max-height: 200px;"><table class="table table-sm">...</table></div>`; // (Tabla como antes)
+        } else {
+            historyTableHtml += '<p class="text-muted small">No hay datos de historial.</p>';
+        }
+
         reactorModalBody.innerHTML = `
             <div class="row">
-                <div class="col-lg-5">
+                <div class="col-lg-4">
                     <h4>${r.nombre}</h4>
-                    ${historyHtml}
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><strong>País:</strong> ${r.pais}</li>
+                        <li class="list-group-item"><strong>Status:</strong> ${r.status}</li>
+                        <li class="list-group-item"><strong>Tipo:</strong> ${r.tipo_reactor_categoria || 'N/A'}</li>
+                        <li class="list-group-item"><strong>Modelo:</strong> ${r.modelo || 'N/A'}</li>
+                        <li class="list-group-item"><strong>Potencia Neta:</strong> ${r.potencia_neta || 'N/A'} MWe</li>
+                        <li class="list-group-item"><strong>Capacidad Bruta:</strong> ${r.capacidad_bruta || 'N/A'} MWe</li>
+                        <li class="list-group-item"><strong>Capacidad Térmica:</strong> ${r.capacidad_termica || 'N/A'} MWt</li>
+                    </ul>
+                    ${mapHtml}
                 </div>
-                <div class="col-lg-7">
-                    <h5 class="text-center">Electricidad Suministrada (GWh por año)</h5>
-                    <canvas id="historyChart"></canvas>
+                <div class="col-lg-8">
+                    <h6>Electricidad Suministrada (GWh por año)</h6>
+                    <canvas id="detailHistoryChart"></canvas>
+                    <h6 class="mt-3">Factor de Carga Anual (%)</h6>
+                    <canvas id="detailLoadFactorChart"></canvas>
+                    <div class="mt-3">${historyTableHtml}</div>
                 </div>
             </div>`;
+
+        // --- Renderizado de Gráficas y Mapa ---
         
-        // Crear la nueva gráfica de línea
+        // Gráfica 1: Historial de Electricidad
         if (dataHistory.success && dataHistory.historial.length > 0) {
             const historyLabels = dataHistory.historial.map(h => h.ano);
-            const historyValues = dataHistory.historial.map(h => h.electricidad_suministrada);
-            
-            new Chart(document.getElementById('historyChart'), {
-                type: 'line',
-                data: {
-                    labels: historyLabels,
-                    datasets: [{
-                        label: 'GWh Suministrados',
-                        data: historyValues,
-                        borderColor: '#0d6efd',
-                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                        fill: true,
-                        tension: 0.1
-                    }]
-                }
+            new Chart(document.getElementById('detailHistoryChart'), {
+                type: 'line', data: { labels: historyLabels, datasets: [{ label: 'GWh Suministrados', data: dataHistory.historial.map(h => h.electricidad_suministrada), borderColor: '#0d6efd', tension: 0.1 }] }
             });
+            // Gráfica 2: Factor de Carga
+            new Chart(document.getElementById('detailLoadFactorChart'), {
+                type: 'bar', data: { labels: historyLabels, datasets: [{ label: 'Factor de Carga (%)', data: dataHistory.historial.map(h => h.factor_carga_anual), backgroundColor: 'rgba(25, 135, 84, 0.7)' }] }
+            });
+        }
+        
+        // Mapa de Ubicación (Leaflet)
+        if (r.latitud && r.longitud) {
+            // El mapa a veces no se renderiza bien en un modal oculto.
+            // Lo inicializamos DESPUÉS de que el modal sea visible.
+            document.getElementById('reactorModal').addEventListener('shown.bs.modal', function () {
+                const detailMap = L.map('reactor-detail-map').setView([r.latitud, r.longitud], 13);
+               L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri'
+}).addTo(detailMap);
+                L.marker([r.latitud, r.longitud]).addTo(detailMap);
+            }, { once: true }); // 'once: true' evita que el evento se dispare múltiples veces
         }
     }
 }

@@ -1,122 +1,86 @@
 {% extends "reactores/base.html" %}
+{% load static %}
 
-{% block title %}Dashboard Principal{% endblock %}
+{% block title %}Nuclear Dashboard - Un Análisis Global{% endblock %}
 
 {% block content %}
-    <h2 class="mb-4">Dashboard Principal</h2>
+<div class="p-5 mb-4 bg-light rounded-3 text-center">
+    <div class="container-fluid py-5">
+        <h1 class="display-4 fw-bold">Explora el Universo de la Energía Nuclear</h1>
+        <p class="fs-4 col-md-10 mx-auto">Una herramienta interactiva para analizar, comparar y entender los reactores nucleares del mundo. Basado en datos de la World Nuclear Association.</p>
+    </div>
+</div>
 
-    <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Total de Reactores Operativos</h6>
-                    <p class="card-text display-4 fw-bold">{{ total_reactores }}</p>
-                </div>
-            </div>
+<div class="row text-center mb-5">
+    <div class="col-md-4"><div class="card border-0"><div class="card-body"><h6 class="text-muted">Total de Reactores</h6><p class="display-5 fw-bold text-primary">{{ total_reactores }}</p></div></div></div>
+    <div class="col-md-4"><div class="card border-0"><div class="card-body"><h6 class="text-muted">Potencia Total Neta (GW)</h6><p class="display-5 fw-bold text-primary">{{ potencia_total_gw }} <span class="fs-4">GW</span></p></div></div></div>
+    <div class="col-md-4"><div class="card border-0"><div class="card-body"><h6 class="text-muted">Países con Programas Nucleares</h6><p class="display-5 fw-bold text-primary">{{ paises_con_reactores }}</p></div></div></div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white">Reactores por País (Top 5)</div>
+            <div class="card-body"><canvas id="topPaisesChart"></canvas></div>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Potencia Total Neta (GW)</h6>
-                    <p class="card-text display-4 fw-bold">{{ potencia_total_gw }}</p>
-                </div>
-            </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white">Mix Energético Mundial</div>
+            <div class="card-body"><canvas id="energyMixChart"></canvas></div>
         </div>
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Países con Reactores</h6>
-                    <p class="card-text display-4 fw-bold">{{ paises_con_reactores }}</p>
-                </div>
+    </div>
+</div>
+
+<hr class="my-5">
+
+<div class="text-center mb-5">
+    <h2 class="display-6">Nuestras Herramientas de Análisis</h2>
+    <p class="lead">Sumérgete en los datos con nuestras herramientas interactivas.</p>
+</div>
+<div class="row align-items-md-stretch">
+    <div class="col-md-6 mb-4"><div class="h-100 p-5 text-white bg-dark rounded-3 shadow"><h2>🌍 Atlas Interactivo</h2><p>Visualiza la distribución global, explora los reactores de cada país y accede a sus datos con un solo clic.</p><a class="btn btn-outline-light" href="{% url 'atlas' %}" role="button">Explorar el Atlas &raquo;</a></div></div>
+    <div class="col-md-6 mb-4"><div class="h-100 p-5 bg-body-tertiary border rounded-3 shadow"><h2>📊 Comparador Dinámico</h2><p>Analiza hasta cuatro reactores a la vez con gráficas de potencia, construcción e historial de rendimiento.</p><a class="btn btn-outline-secondary" href="{% url 'comparador' %}" role="button">Abrir el Comparador &raquo;</a></div></div>
+    <div class="col-md-6 mb-4"><div class="h-100 p-5 bg-body-tertiary border rounded-3 shadow"><h2>⏳ Ciclo de Vida y Futuro</h2><p>Descubre la vida útil de cada reactor y visualiza cuándo serán desmantelados los que están activos.</p><a class="btn btn-outline-secondary" href="{% url 'ciclo_vida' %}" role="button">Ver la Línea de Tiempo &raquo;</a></div></div>
+    <div class="col-md-6 mb-4"><div class="h-100 p-5 text-white bg-primary rounded-3 shadow"><h2>🧬 Enciclopedia de Tipos</h2><p>Analiza y compara las diferentes tecnologías de reactores (PWR, BWR, etc.) para entender su despliegue global.</p><a class="btn btn-outline-light" href="{% url 'enciclopedia_tipos' %}" role="button">Consultar la Enciclopedia &raquo;</a></div></div>
+</div>
+
+<hr class="my-5">
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><h5 class="mb-0">Ranking Completo de Países por Número de Reactores</h5></div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <ul class="list-group list-group-flush">
+                    {% for pais in todos_los_paises %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ forloop.counter }}. {{ pais.pais }}
+                        <span class="badge bg-primary rounded-pill">{{ pais.total }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     </div>
-
-    <div class="row">
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white">Reactores por País (Top 5)</div>
-                <div class="card-body">
-                    <canvas id="topPaisesChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white">Mix Energético Mundial</div>
-                <div class="card-body">
-                    <canvas id="energyMixChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white">
-                    Ranking de Países por Número de Reactores
-                </div>
-                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-                    <ul class="list-group list-group-flush">
-                        {% for pais in todos_los_paises %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ forloop.counter }}. {{ pais.pais }}
-                            <span class="badge bg-primary rounded-pill">{{ pais.total }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
+</div>
 {% endblock %}
 
 {% block javascript %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Datos desde Django ---
     const energyMixData = JSON.parse('{{ energy_mix_json|escapejs }}');
     const topPaisesData = JSON.parse('{{ top_paises_chart_json|escapejs }}');
 
-    // --- Gráfica de Donut: Mix Energético ---
+    // Gráfica de Donut: Mix Energético
     new Chart(document.getElementById('energyMixChart'), {
-        type: 'doughnut',
-        data: {
-            labels: energyMixData.labels,
-            datasets: [{
-                data: energyMixData.data,
-                backgroundColor: ['#495057', '#0d6efd', '#ffc107', '#198754', '#0dcaf0'],
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'bottom' } }
-        }
+        type: 'doughnut', data: { labels: energyMixData.labels, datasets: [{ data: energyMixData.data, backgroundColor: ['#495057', '#0d6efd', '#ffc107', '#198754', '#0dcaf0'], borderWidth: 2, borderColor: '#fff' }] }, options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
     });
 
-    // --- Gráfica de Barras: Top 5 Países ---
+    // Gráfica de Barras: Top 5 Países
     new Chart(document.getElementById('topPaisesChart'), {
-        type: 'bar',
-        data: {
-            labels: topPaisesData.labels,
-            datasets: [{
-                label: 'Número de Reactores',
-                data: topPaisesData.data,
-                backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                borderColor: 'rgba(13, 110, 253, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            indexAxis: 'y', // Hace la gráfica horizontal
-            responsive: true,
-            plugins: { legend: { display: false } }
-        }
+        type: 'bar', data: { labels: topPaisesData.labels, datasets: [{ label: 'Número de Reactores', data: topPaisesData.data, backgroundColor: 'rgba(13, 110, 253, 0.7)', borderColor: 'rgba(13, 110, 253, 1)', borderWidth: 1 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
     });
 });
 </script>
