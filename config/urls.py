@@ -5,5 +5,5 @@ from django.urls import path, include # Asegúrate de que 'include' esté import
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Añade esta línea. Todo lo que empiece con 'comparador/' será manejado por nuestra app.
-    path('', include('reactores.urls')),
+    path('comparador/', include('reactores.urls')),
 ]
